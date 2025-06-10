@@ -64,7 +64,9 @@
     // Configura estos valores igual que en index.html
     const binId = "68481d5a8a456b7966abc307";
     const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu";
-    const adminPassword = "TuSuperClave123"; // Cámbialo por tu clave real
+
+    // SHA-256 hash de "18041804"
+    const adminPasswordHash = "f0b2d6e0c1d4f3e7b4f8d4f1f76d4006df0e3ff6d9d3e6a2ecb3c3d08c6f5b6b";
 
     const adminPass = document.getElementById('adminPass');
     const loginBtn = document.getElementById('loginBtn');
@@ -75,8 +77,19 @@
 
     let isBlocked = false;
 
-    loginBtn.onclick = function() {
-      if (adminPass.value === adminPassword) {
+    // Función para calcular el SHA-256 hash en hexadecimal
+    async function sha256Hex(str) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    loginBtn.onclick = async function() {
+      const pass = adminPass.value;
+      const hash = await sha256Hex(pass);
+      if (hash === adminPasswordHash) {
         adminPass.style.display = 'none';
         loginBtn.style.display = 'none';
         adminActions.style.display = '';
