@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chat simple con JSONBin.io</title>
+<title>Classroom</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -115,8 +115,10 @@
 <body>
 <div id="app">
   <div id="login">
-    <h2>Elige tu nombre</h2>
+    <h2>Elige tu nombre y correo</h2>
     <input type="text" id="usernameInput" placeholder="Tu nombre" maxlength="20" />
+    <br />
+    <input type="email" id="emailInput" placeholder="Correo @iesclaracampoamorrodriguez.es" maxlength="50" />
     <br />
     <button id="btnLogin">Entrar</button>
   </div>
@@ -138,6 +140,7 @@
   const loginDiv = document.getElementById("login");
   const chatDiv = document.getElementById("chat");
   const usernameInput = document.getElementById("usernameInput");
+  const emailInput = document.getElementById("emailInput");
   const btnLogin = document.getElementById("btnLogin");
   const messagesDiv = document.getElementById("messages");
   const msgInput = document.getElementById("msgInput");
@@ -147,10 +150,23 @@
   let username = null;
   let messages = [];
 
+  // Regex para validar correo segun tu regla:
+  // cualquier texto + número(s) + @iesclaracampoamorrodriguez.es
+  const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
+
   btnLogin.onclick = () => {
     const name = usernameInput.value.trim();
-    if (!name) return alert("Pon un nombre válido");
-    username = name;
+    const email = emailInput.value.trim().toLowerCase();
+
+    if (!name) {
+      alert("Pon un nombre válido");
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      alert("El correo debe tener un número antes de @iesclaracampoamorrodriguez.es (ejemplo: ejemplo11@iesclaracampoamorrodriguez.es)");
+      return;
+    }
+    username = name + " (" + email + ")";
     loginDiv.style.display = "none";
     chatDiv.style.display = "flex";
     loadMessages();
