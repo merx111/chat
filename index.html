@@ -161,16 +161,29 @@
   // cualquier texto + número(s) + @iesclaracampoamorrodriguez.es
   const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
 
-  // Al cargar, si hay usuario guardado en localStorage, salta el login
+  // Antes de mostrar login/chat, consulta el estado de bloqueo
   window.onload = () => {
-    const storedUser = localStorage.getItem('username');
-    if (storedUser) {
-      username = storedUser;
-      loginDiv.style.display = "none";
-      chatDiv.style.display = "flex";
-      loadMessages();
-      startAutoRefresh();
-    }
+    fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { "X-Master-Key": apiKey }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.record.blocked) {
+        document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
+      } else {
+        const storedUser = localStorage.getItem('username');
+        if (storedUser) {
+          username = storedUser;
+          loginDiv.style.display = "none";
+          chatDiv.style.display = "flex";
+          loadMessages();
+          startAutoRefresh();
+        }
+      }
+    })
+    .catch(() => {
+      document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;">No se pudo comprobar el estado del chat.</div>';
+    });
   };
 
   btnLogin.onclick = () => {
@@ -281,6 +294,15 @@
 
     // Guardar en JSONBin
     try {
+      // Leer estado de bloqueo antes de guardar el mensaje
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: { "X-Master-Key": apiKey }
+      });
+      const data = await res.json();
+      if (data.record.blocked) {
+        alert("El chat ha sido bloqueado por el admin.");
+        return;
+      }
       await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
         method: "PUT",
         headers: {
@@ -288,7 +310,7 @@
           "X-Master-Key": apiKey,
           "X-Bin-Versioning": "false"
         },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({ messages, blocked: data.record.blocked || false })
       });
     } catch (e) {
       console.error("Error guardando mensaje", e);
@@ -306,6 +328,11 @@
         });
         if (!res.ok) throw new Error("Error cargando mensajes");
         const data = await res.json();
+        // Si está bloqueado durante la sesión, muestra el mensaje y para el chat
+        if (data.record.blocked) {
+          document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
+          return;
+        }
         const latestMessages = data.record.messages || [];
         if (JSON.stringify(latestMessages) !== JSON.stringify(messages)) {
           messages = latestMessages;
