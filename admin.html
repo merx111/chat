@@ -66,7 +66,7 @@
     const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu";
 
     // SHA-256 hash de "18041804"
-    const adminPasswordHash = "f0b2d6e0c1d4f3e7b4f8d4f1f76d4006df0e3ff6d9d3e6a2ecb3c3d08c6f5b6b";
+    const adminPasswordHash = "f0fba7c0e056d8d4a44f4e5a1bf5ac10f9bc3a3f6f5d2a1a6463d071a53ac63b";
 
     const adminPass = document.getElementById('adminPass');
     const loginBtn = document.getElementById('loginBtn');
@@ -103,67 +103,4 @@
     async function getBlockStatus() {
       statusDiv.textContent = "Cargando estado...";
       try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-          headers: { "X-Master-Key": apiKey }
-        });
-        const data = await res.json();
-        isBlocked = data.record.blocked || false;
-        updateBlockUI();
-      } catch (e) {
-        statusDiv.textContent = "Error obteniendo estado";
-      }
-    }
-
-    function updateBlockUI() {
-      blockBtn.textContent = isBlocked ? "✅ Desbloquear acceso" : "🚫 Bloquear acceso";
-      statusDiv.textContent = "Estado acceso: " + (isBlocked ? "BLOQUEADO" : "PERMITIDO");
-    }
-
-    // Botón bloquear/desbloquear
-    blockBtn.onclick = async function() {
-      try {
-        // Obtener mensajes existentes para no borrar el chat al bloquear/desbloquear
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-          headers: { "X-Master-Key": apiKey }
-        });
-        const data = await res.json();
-        const messages = data.record.messages || [];
-        isBlocked = !isBlocked;
-        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": apiKey,
-            "X-Bin-Versioning": "false"
-          },
-          body: JSON.stringify({ messages, blocked: isBlocked })
-        });
-        updateBlockUI();
-        alert(isBlocked ? "Acceso bloqueado. Nadie podrá entrar." : "Acceso desbloqueado. Todos pueden entrar.");
-      } catch(e) {
-        alert("Error actualizando estado");
-      }
-    };
-
-    // Botón borrar chat
-    deleteBtn.onclick = async function() {
-      if (!confirm("¿Seguro que quieres borrar TODO el chat? Esta acción NO se puede deshacer.")) return;
-      try {
-        // Mantén el estado de bloqueo actual, solo borra mensajes
-        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": apiKey,
-            "X-Bin-Versioning": "false"
-          },
-          body: JSON.stringify({ messages: [], blocked: isBlocked })
-        });
-        alert("Chat borrado.");
-      } catch(e) {
-        alert("Error al borrar el chat");
-      }
-    };
-  </script>
-</body>
-</html>
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/
