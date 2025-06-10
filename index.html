@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Classroom</title>
 <style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
   body {
     font-family: Arial, sans-serif;
     background: #222;
@@ -13,6 +18,7 @@
     justify-content: center;
     align-items: center;
     height: 100vh;
+    min-height: 100vh;
   }
   #app {
     background: #333;
@@ -45,20 +51,22 @@
     color: white;
   }
   #chat {
-    flex: 1;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    flex: 1 1 0;
   }
   #messages {
-    flex: 1;
+    flex: 1 1 0;
     overflow-y: auto;
     padding: 10px;
     background: #222;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    scrollbar-color: #06f #222; /* Para navegadores que lo soportan */
+    scrollbar-color: #06f #222;
     scrollbar-width: thin;
+    min-height: 0;
   }
   #messages::-webkit-scrollbar {
     width: 8px;
@@ -108,6 +116,7 @@
     background: #111;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
   }
   #input-area input[type=text] {
     flex: 1;
@@ -141,7 +150,7 @@
     <br />
     <button id="btnLogin">Entrar</button>
   </div>
-  <div id="chat" style="display:none;">
+  <div id="chat" style="display:none; height:100%;">
     <div id="messages"></div>
     <div id="input-area">
       <input type="text" id="msgInput" placeholder="Escribe un mensaje" maxlength="300" />
@@ -153,8 +162,8 @@
 </div>
 
 <script>
-  const binId = "68481d5a8a456b7966abc307"; // tu binId
-  const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu"; // tu API key
+  const binId = "68481d5a8a456b7966abc307";
+  const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu";
 
   const loginDiv = document.getElementById("login");
   const chatDiv = document.getElementById("chat");
@@ -170,7 +179,6 @@
   let messages = [];
   let autoRefreshInterval = null;
 
-  // Regex para validar correo segun tu regla:
   const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
 
   function showBlocked() {
@@ -178,7 +186,6 @@
     document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
   }
 
-  // Antes de mostrar login/chat, consulta el estado de bloqueo
   window.onload = () => {
     fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
       headers: { "X-Master-Key": apiKey }
@@ -216,7 +223,7 @@
       return;
     }
     username = name + " (" + email + ")";
-    localStorage.setItem('username', username); // Guarda el usuario
+    localStorage.setItem('username', username);
     loginDiv.style.display = "none";
     chatDiv.style.display = "flex";
     loadMessages();
@@ -264,8 +271,6 @@
   }
 
   function extractName(userField) {
-    // userField tiene el formato "nombre (correo)"
-    // Queremos solo 'nombre'
     const idx = userField.indexOf(" (");
     return idx !== -1 ? userField.substring(0, idx) : userField;
   }
@@ -277,7 +282,6 @@
       div.classList.add("message");
       if (msg.user === username) div.classList.add("self");
 
-      // Muestra solo el nombre (sin correo)
       const userDiv = document.createElement("div");
       userDiv.className = "user";
       userDiv.textContent = extractName(msg.user);
@@ -308,7 +312,6 @@
     const text = msgInput.value.trim();
     if (!text && !isImage) return;
 
-    // Chequea bloqueo antes de enviar
     try {
       const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
         headers: { "X-Master-Key": apiKey }
