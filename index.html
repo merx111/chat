@@ -78,6 +78,13 @@
     margin-top: 3px;
     text-align: right;
   }
+  .message .user {
+    font-size: 0.8em;
+    color: #aaf;
+    font-weight: bold;
+    margin-bottom: 2px;
+    margin-top: -2px;
+  }
   .message img {
     max-width: 150px;
     border-radius: 10px;
@@ -154,6 +161,18 @@
   // cualquier texto + número(s) + @iesclaracampoamorrodriguez.es
   const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
 
+  // Al cargar, si hay usuario guardado en localStorage, salta el login
+  window.onload = () => {
+    const storedUser = localStorage.getItem('username');
+    if (storedUser) {
+      username = storedUser;
+      loginDiv.style.display = "none";
+      chatDiv.style.display = "flex";
+      loadMessages();
+      startAutoRefresh();
+    }
+  };
+
   btnLogin.onclick = () => {
     const name = usernameInput.value.trim();
     const email = emailInput.value.trim().toLowerCase();
@@ -167,6 +186,7 @@
       return;
     }
     username = name + " (" + email + ")";
+    localStorage.setItem('username', username); // Guarda el usuario
     loginDiv.style.display = "none";
     chatDiv.style.display = "flex";
     loadMessages();
@@ -217,6 +237,12 @@
       const div = document.createElement("div");
       div.classList.add("message");
       if (msg.user === username) div.classList.add("self");
+
+      // Agrega el nombre del usuario encima del mensaje
+      const userDiv = document.createElement("div");
+      userDiv.className = "user";
+      userDiv.textContent = msg.user;
+      div.appendChild(userDiv);
 
       if (msg.image) {
         const img = document.createElement("img");
