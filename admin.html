@@ -22,16 +22,6 @@
       text-align: center;
       min-width: 300px;
     }
-    input[type="password"] {
-      padding: 10px;
-      font-size: 1.1em;
-      border-radius: 5px;
-      border: none;
-      margin-bottom: 15px;
-      width: 80%;
-      background: #222;
-      color: #fff;
-    }
     button {
       padding: 12px 25px;
       margin: 10px;
@@ -51,56 +41,90 @@
 <body>
   <div id="admin-panel">
     <h2>Panel Admin Chat</h2>
-    <input type="password" id="adminPass" placeholder="Contraseña admin" /><br>
-    <button id="loginBtn">Entrar</button>
-    <div id="adminActions" style="display:none;">
+    <div id="adminActions">
       <div id="status"></div>
       <button class="danger" id="deleteBtn">❌ Borrar TODO el chat</button><br>
       <button id="blockBtn">🚫 Bloquear acceso</button>
     </div>
   </div>
-
   <script>
     // Configura estos valores igual que en index.html
     const binId = "68481d5a8a456b7966abc307";
     const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu";
 
-    // SHA-256 hash de "18041804"
-    const adminPasswordHash = "f0fba7c0e056d8d4a44f4e5a1bf5ac10f9bc3a3f6f5d2a1a6463d071a53ac63b";
-
-    const adminPass = document.getElementById('adminPass');
-    const loginBtn = document.getElementById('loginBtn');
-    const adminActions = document.getElementById('adminActions');
     const deleteBtn = document.getElementById('deleteBtn');
     const blockBtn = document.getElementById('blockBtn');
     const statusDiv = document.getElementById('status');
 
     let isBlocked = false;
 
-    // Función para calcular el SHA-256 hash en hexadecimal
-    async function sha256Hex(str) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(str);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    loginBtn.onclick = async function() {
-      const pass = adminPass.value;
-      const hash = await sha256Hex(pass);
-      if (hash === adminPasswordHash) {
-        adminPass.style.display = 'none';
-        loginBtn.style.display = 'none';
-        adminActions.style.display = '';
-        getBlockStatus();
-      } else {
-        alert("Contraseña incorrecta");
-      }
-    };
-
     // Leer estado de bloqueo
     async function getBlockStatus() {
       statusDiv.textContent = "Cargando estado...";
       try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+          headers: { "X-Master-Key": apiKey }
+        });
+        const data = await res.json();
+        isBlocked = data.record.blocked || false;
+        updateBlockUI();
+      } catch (e) {
+        statusDiv.textContent = "Error obteniendo estado";
+      }
+    }
+
+    function updateBlockUI() {
+      blockBtn.textContent = isBlocked ? "✅ Desbloquear acceso" : "🚫 Bloquear acceso";
+      statusDiv.textContent = "Estado acceso: " + (isBlocked ? "BLOQUEADO" : "PERMITIDO");
+    }
+
+    // Botón bloquear/desbloquear
+    blockBtn.onclick = async function() {
+      try {
+        // Obtener mensajes existentes para no borrar el chat al bloquear/desbloquear
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+          headers: { "X-Master-Key": apiKey }
+        });
+        const data = await res.json();
+        const messages = data.record.messages || [];
+        isBlocked = !isBlocked;
+        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": apiKey,
+            "X-Bin-Versioning": "false"
+          },
+          body: JSON.stringify({ messages, blocked: isBlocked })
+        });
+        updateBlockUI();
+        alert(isBlocked ? "Acceso bloqueado. Nadie podrá entrar." : "Acceso desbloqueado. Todos pueden entrar.");
+      } catch(e) {
+        alert("Error actualizando estado");
+      }
+    };
+
+    // Botón borrar chat
+    deleteBtn.onclick = async function() {
+      if (!confirm("¿Seguro que quieres borrar TODO el chat? Esta acción NO se puede deshacer.")) return;
+      try {
+        // Mantén el estado de bloqueo actual, solo borra mensajes
+        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": apiKey,
+            "X-Bin-Versioning": "false"
+          },
+          body: JSON.stringify({ messages: [], blocked: isBlocked })
+        });
+        alert("Chat borrado.");
+      } catch(e) {
+        alert("Error al borrar el chat");
+      }
+    };
+
+    getBlockStatus();
+  </script>
+</body>
+</html>
