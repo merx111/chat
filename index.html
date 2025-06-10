@@ -57,6 +57,18 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    scrollbar-color: #06f #222; /* Para navegadores que lo soportan */
+    scrollbar-width: thin;
+  }
+  #messages::-webkit-scrollbar {
+    width: 8px;
+  }
+  #messages::-webkit-scrollbar-thumb {
+    background: #06f;
+    border-radius: 6px;
+  }
+  #messages::-webkit-scrollbar-track {
+    background: #222;
   }
   .message {
     max-width: 70%;
@@ -159,10 +171,8 @@
   let autoRefreshInterval = null;
 
   // Regex para validar correo segun tu regla:
-  // cualquier texto + número(s) + @iesclaracampoamorrodriguez.es
   const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
 
-  // Función para mostrar mensaje de bloqueo
   function showBlocked() {
     clearInterval(autoRefreshInterval);
     document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
@@ -253,6 +263,13 @@
     }
   }
 
+  function extractName(userField) {
+    // userField tiene el formato "nombre (correo)"
+    // Queremos solo 'nombre'
+    const idx = userField.indexOf(" (");
+    return idx !== -1 ? userField.substring(0, idx) : userField;
+  }
+
   function renderMessages() {
     messagesDiv.innerHTML = "";
     messages.forEach(msg => {
@@ -260,10 +277,10 @@
       div.classList.add("message");
       if (msg.user === username) div.classList.add("self");
 
-      // Agrega el nombre del usuario encima del mensaje
+      // Muestra solo el nombre (sin correo)
       const userDiv = document.createElement("div");
       userDiv.className = "user";
-      userDiv.textContent = msg.user;
+      userDiv.textContent = extractName(msg.user);
       div.appendChild(userDiv);
 
       if (msg.image) {
@@ -325,7 +342,6 @@
     }
   }
 
-  // Recarga periódica para ver nuevos mensajes de otros usuarios y si el chat se bloquea mientras estás dentro
   function startAutoRefresh() {
     autoRefreshInterval = setInterval(async () => {
       try {
@@ -334,7 +350,6 @@
         });
         if (!res.ok) throw new Error("Error cargando mensajes");
         const data = await res.json();
-        // Si está bloqueado durante la sesión, muestra el mensaje y para el chat
         if (data.record.blocked) {
           showBlocked();
           return;
