@@ -1,267 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Chat Supabase</title>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f2f2f2;
-    margin: 0; padding: 0;
-    display: flex; justify-content: center; align-items: center; height: 100vh;
-  }
-  #app {
-    width: 400px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #login, #chat {
-    padding: 20px;
-  }
-  #login input, #chat input[type="text"] {
-    width: calc(100% - 24px);
-    padding: 10px;
-    margin-bottom: 10px;
-    font-size: 16px;
-  }
-  #chat {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  #messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-  }
-  .message-bubble {
-    background: #e0e0e0;
-    padding: 10px;
-    border-radius: 15px;
-    max-width: 75%;
-    margin-bottom: 6px;
-    position: relative;
-    font-size: 14px;
-  }
-  .message-bubble img {
-    max-width: 200px;
-    border-radius: 10px;
-    display: block;
-  }
-  .message-info {
-    font-size: 10px;
-    color: #555;
-    margin-top: 2px;
-  }
-  .message-container {
-    margin-bottom: 12px;
-  }
-  #input-area {
-    display: flex;
-    align-items: center;
-    border-top: 1px solid #ddd;
-    padding-top: 10px;
-  }
-  #input-area input[type="text"] {
-    flex-grow: 1;
-    padding: 10px;
-    font-size: 16px;
-  }
-  #input-area button {
-    margin-left: 8px;
-    background: #007bff;
-    border: none;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  #input-area button:hover {
-    background: #0056b3;
-  }
-  #input-area label {
-    cursor: pointer;
-  }
-  #input-area input[type="file"] {
-    display: none;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat en GitHub Pages</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="chat-container">
+    <!-- Registro de usuario -->
+    <div id="register-section">
+      <h2>Registrarse</h2>
+      <input type="text" id="username" placeholder="Ingresa tu nombre" />
+      <button id="register-btn">Entrar</button>
+    </div>
 
-<div id="app">
-  <div id="login">
-    <input type="text" id="usernameInput" placeholder="Escribe tu nombre" />
-    <button id="loginBtn">Entrar al chat</button>
-  </div>
-
-  <div id="chat" style="display:none; flex-direction: column; height: 100%;">
-    <div id="messages"></div>
-    <div id="input-area">
-      <input type="text" id="messageInput" placeholder="Escribe un mensaje..." autocomplete="off" />
-      <label for="fileInput" title="Subir imagen">
-        <svg width="24" height="24" fill="#007bff" viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm9-14h-2v6H8l4 4 4-4h-4V6z"/></svg>
-      </label>
-      <input type="file" id="fileInput" accept="image/*" />
-      <button id="sendBtn">Enviar</button>
+    <!-- Chat principal -->
+    <div id="chat-section" style="display: none;">
+      <div id="messages"></div>
+      <div id="input-area">
+        <input type="file" id="image-input" accept="image/*" style="display:none" />
+        <button id="upload-btn" title="Subir foto">📷</button>
+        <input type="text" id="message-input" placeholder="Escribe un mensaje..." />
+        <button id="send-btn">Enviar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<script type="module">
-// Importar SDK de Supabase
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-// Tus datos Supabase aquí
-const SUPABASE_URL = 'https://zjpfmxuhcuixgwnpvvob.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcGZteHVoY3VpeGd3bnB2dm9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NTI1MDgsImV4cCI6MjA2NTEyODUwOH0.M6ssOK1zGQbcHrixZsLYBXR7pV1geZehC15LsQzVOTs'
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-const loginDiv = document.getElementById('login')
-const chatDiv = document.getElementById('chat')
-const usernameInput = document.getElementById('usernameInput')
-const loginBtn = document.getElementById('loginBtn')
-const messagesDiv = document.getElementById('messages')
-const messageInput = document.getElementById('messageInput')
-const sendBtn = document.getElementById('sendBtn')
-const fileInput = document.getElementById('fileInput')
-
-let username = null
-
-function formatDateTime(dateStr) {
-  const d = new Date(dateStr)
-  return d.toLocaleString()
-}
-
-function addMessageBubble(msg) {
-  const container = document.createElement('div')
-  container.className = 'message-container'
-
-  const bubble = document.createElement('div')
-  bubble.className = 'message-bubble'
-
-  if (msg.content) {
-    bubble.textContent = msg.content
-  }
-  if (msg.image_url) {
-    const img = document.createElement('img')
-    img.src = msg.image_url
-    bubble.appendChild(img)
-  }
-
-  container.appendChild(bubble)
-
-  const info = document.createElement('div')
-  info.className = 'message-info'
-  info.textContent = `${msg.username} • ${formatDateTime(msg.created_at)}`
-  container.appendChild(info)
-
-  messagesDiv.appendChild(container)
-  messagesDiv.scrollTop = messagesDiv.scrollHeight
-}
-
-async function loadMessages() {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .order('created_at', { ascending: true })
-  
-  if (error) {
-    console.error('Error cargando mensajes:', error)
-    return
-  }
-  messagesDiv.innerHTML = ''
-  data.forEach(addMessageBubble)
-}
-
-async function sendMessage(content, image_url=null) {
-  if (!content && !image_url) return
-
-  const { data, error } = await supabase
-    .from('messages')
-    .insert([{ username, content, image_url }])
-
-  if (error) {
-    console.error('Error enviando mensaje:', error)
-  }
-}
-
-async function uploadImage(file) {
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Date.now()}.${fileExt}`
-  const filePath = `chat-images/${fileName}`
-
-  const { data, error } = await supabase.storage
-    .from('public')
-    .upload(filePath, file)
-
-  if (error) {
-    alert('Error subiendo imagen: ' + error.message)
-    return null
-  }
-
-  const { publicURL, error: urlError } = supabase.storage
-    .from('public')
-    .getPublicUrl(filePath)
-
-  if (urlError) {
-    alert('Error obteniendo URL: ' + urlError.message)
-    return null
-  }
-
-  return publicURL
-}
-
-loginBtn.onclick = () => {
-  const name = usernameInput.value.trim()
-  if (name.length < 2) {
-    alert('Escribe un nombre válido (mínimo 2 caracteres).')
-    return
-  }
-  username = name
-  loginDiv.style.display = 'none'
-  chatDiv.style.display = 'flex'
-  loadMessages()
-  subscribeNewMessages()
-}
-
-sendBtn.onclick = async () => {
-  const text = messageInput.value.trim()
-  if (!text) return
-  await sendMessage(text)
-  messageInput.value = ''
-}
-
-messageInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendBtn.click()
-})
-
-fileInput.onchange = async e => {
-  const file = e.target.files[0]
-  if (!file) return
-  const url = await uploadImage(file)
-  if (url) {
-    await sendMessage(null, url)
-  }
-  fileInput.value = ''
-}
-
-function subscribeNewMessages() {
-  supabase
-    .from('messages')
-    .on('INSERT', payload => {
-      addMessageBubble(payload.new)
-    })
-    .subscribe()
-}
-</script>
-
+  <script src="script.js"></script>
 </body>
 </html>
