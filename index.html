@@ -156,10 +156,17 @@
 
   let username = null;
   let messages = [];
+  let autoRefreshInterval = null;
 
   // Regex para validar correo segun tu regla:
   // cualquier texto + número(s) + @iesclaracampoamorrodriguez.es
   const emailRegex = /^[a-zA-Z0-9._%+-]+[0-9]+@iesclaracampoamorrodriguez\.es$/;
+
+  // Función para mostrar mensaje de bloqueo
+  function showBlocked() {
+    clearInterval(autoRefreshInterval);
+    document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
+  }
 
   // Antes de mostrar login/chat, consulta el estado de bloqueo
   window.onload = () => {
@@ -169,7 +176,7 @@
     .then(r => r.json())
     .then(data => {
       if (data.record.blocked) {
-        document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
+        showBlocked();
       } else {
         const storedUser = localStorage.getItem('username');
         if (storedUser) {
@@ -231,12 +238,14 @@
   async function loadMessages() {
     try {
       const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-        headers: {
-          "X-Master-Key": apiKey
-        }
+        headers: { "X-Master-Key": apiKey }
       });
       if (!res.ok) throw new Error("Error cargando mensajes");
       const data = await res.json();
+      if (data.record.blocked) {
+        showBlocked();
+        return;
+      }
       messages = data.record.messages || [];
       renderMessages();
     } catch (e) {
@@ -282,27 +291,26 @@
     const text = msgInput.value.trim();
     if (!text && !isImage) return;
 
-    const newMsg = {
-      user: username,
-      time: new Date().toISOString(),
-      text: isImage ? null : text,
-      image: isImage ? imgData : null
-    };
-    messages.push(newMsg);
-    renderMessages();
-    msgInput.value = "";
-
-    // Guardar en JSONBin
+    // Chequea bloqueo antes de enviar
     try {
-      // Leer estado de bloqueo antes de guardar el mensaje
       const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
         headers: { "X-Master-Key": apiKey }
       });
       const data = await res.json();
       if (data.record.blocked) {
-        alert("El chat ha sido bloqueado por el admin.");
+        showBlocked();
         return;
       }
+      const newMsg = {
+        user: username,
+        time: new Date().toISOString(),
+        text: isImage ? null : text,
+        image: isImage ? imgData : null
+      };
+      messages.push(newMsg);
+      renderMessages();
+      msgInput.value = "";
+
       await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
         method: "PUT",
         headers: {
@@ -317,20 +325,18 @@
     }
   }
 
-  // Recarga periódica para ver nuevos mensajes de otros usuarios
+  // Recarga periódica para ver nuevos mensajes de otros usuarios y si el chat se bloquea mientras estás dentro
   function startAutoRefresh() {
-    setInterval(async () => {
+    autoRefreshInterval = setInterval(async () => {
       try {
         const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-          headers: {
-            "X-Master-Key": apiKey
-          }
+          headers: { "X-Master-Key": apiKey }
         });
         if (!res.ok) throw new Error("Error cargando mensajes");
         const data = await res.json();
         // Si está bloqueado durante la sesión, muestra el mensaje y para el chat
         if (data.record.blocked) {
-          document.getElementById('app').innerHTML = '<div style="padding:40px;text-align:center;color:#f44;font-size:1.3em;">El chat está BLOQUEADO por el administrador.<br>Vuelve más tarde.</div>';
+          showBlocked();
           return;
         }
         const latestMessages = data.record.messages || [];
