@@ -1,32 +1,279 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat en GitHub Pages</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chat simple con JSONBin.io</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #222;
+    color: #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  #app {
+    background: #333;
+    width: 400px;
+    height: 600px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #login {
+    margin: auto;
+    text-align: center;
+  }
+  #login input {
+    padding: 10px;
+    font-size: 1.2em;
+    width: 80%;
+    border-radius: 5px;
+    border: none;
+    margin-bottom: 10px;
+  }
+  #login button {
+    padding: 10px 15px;
+    font-size: 1.1em;
+    cursor: pointer;
+    border-radius: 5px;
+    border: none;
+    background: #06f;
+    color: white;
+  }
+  #chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    background: #222;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .message {
+    max-width: 70%;
+    padding: 8px 12px;
+    border-radius: 20px;
+    position: relative;
+    font-size: 0.95em;
+    word-wrap: break-word;
+    background: #555;
+    color: #eee;
+  }
+  .message.self {
+    align-self: flex-end;
+    background: #0a6;
+  }
+  .message .time {
+    font-size: 0.7em;
+    color: #bbb;
+    margin-top: 3px;
+    text-align: right;
+  }
+  .message img {
+    max-width: 150px;
+    border-radius: 10px;
+    display: block;
+  }
+  #input-area {
+    display: flex;
+    padding: 10px;
+    background: #111;
+    align-items: center;
+    gap: 8px;
+  }
+  #input-area input[type=text] {
+    flex: 1;
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 5px;
+    border: none;
+  }
+  #input-area button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #eee;
+    font-size: 1.5em;
+  }
+  #input-area button:hover {
+    color: #0a6;
+  }
+  input[type=file] {
+    display: none;
+  }
+</style>
 </head>
 <body>
-  <div id="chat-container">
-    <!-- Registro de usuario -->
-    <div id="register-section">
-      <h2>Registrarse</h2>
-      <input type="text" id="username" placeholder="Ingresa tu nombre" />
-      <button id="register-btn">Entrar</button>
-    </div>
-
-    <!-- Chat principal -->
-    <div id="chat-section" style="display: none;">
-      <div id="messages"></div>
-      <div id="input-area">
-        <input type="file" id="image-input" accept="image/*" style="display:none" />
-        <button id="upload-btn" title="Subir foto">📷</button>
-        <input type="text" id="message-input" placeholder="Escribe un mensaje..." />
-        <button id="send-btn">Enviar</button>
-      </div>
+<div id="app">
+  <div id="login">
+    <h2>Elige tu nombre</h2>
+    <input type="text" id="usernameInput" placeholder="Tu nombre" maxlength="20" />
+    <br />
+    <button id="btnLogin">Entrar</button>
+  </div>
+  <div id="chat" style="display:none;">
+    <div id="messages"></div>
+    <div id="input-area">
+      <input type="text" id="msgInput" placeholder="Escribe un mensaje" maxlength="300" />
+      <label for="imgUpload" title="Subir imagen" style="cursor:pointer;">📷</label>
+      <input type="file" id="imgUpload" accept="image/*" />
+      <button id="btnSend">Enviar</button>
     </div>
   </div>
+</div>
 
-  <script src="script.js"></script>
+<script>
+  const binId = "68481d5a8a456b7966abc307"; // tu binId
+  const apiKey = "$2a$10$W7r2d0gmDZE45aqzwLFbTumNYrlgnya.eify2ghIr2Ebrf0aupxWu"; // tu API key
+
+  const loginDiv = document.getElementById("login");
+  const chatDiv = document.getElementById("chat");
+  const usernameInput = document.getElementById("usernameInput");
+  const btnLogin = document.getElementById("btnLogin");
+  const messagesDiv = document.getElementById("messages");
+  const msgInput = document.getElementById("msgInput");
+  const btnSend = document.getElementById("btnSend");
+  const imgUpload = document.getElementById("imgUpload");
+
+  let username = null;
+  let messages = [];
+
+  btnLogin.onclick = () => {
+    const name = usernameInput.value.trim();
+    if (!name) return alert("Pon un nombre válido");
+    username = name;
+    loginDiv.style.display = "none";
+    chatDiv.style.display = "flex";
+    loadMessages();
+    startAutoRefresh();
+  };
+
+  btnSend.onclick = () => {
+    sendMessage();
+  };
+
+  msgInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  imgUpload.onchange = () => {
+    const file = imgUpload.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      sendMessage(reader.result, true);
+    };
+    reader.readAsDataURL(file);
+    imgUpload.value = "";
+  };
+
+  async function loadMessages() {
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: {
+          "X-Master-Key": apiKey
+        }
+      });
+      if (!res.ok) throw new Error("Error cargando mensajes");
+      const data = await res.json();
+      messages = data.record.messages || [];
+      renderMessages();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderMessages() {
+    messagesDiv.innerHTML = "";
+    messages.forEach(msg => {
+      const div = document.createElement("div");
+      div.classList.add("message");
+      if (msg.user === username) div.classList.add("self");
+
+      if (msg.image) {
+        const img = document.createElement("img");
+        img.src = msg.image;
+        div.appendChild(img);
+      }
+      if (msg.text) {
+        const p = document.createElement("p");
+        p.textContent = msg.text;
+        div.appendChild(p);
+      }
+      const time = document.createElement("div");
+      time.className = "time";
+      const d = new Date(msg.time);
+      time.textContent = d.toLocaleString();
+      div.appendChild(time);
+
+      messagesDiv.appendChild(div);
+    });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  async function sendMessage(imgData = null, isImage = false) {
+    const text = msgInput.value.trim();
+    if (!text && !isImage) return;
+
+    const newMsg = {
+      user: username,
+      time: new Date().toISOString(),
+      text: isImage ? null : text,
+      image: isImage ? imgData : null
+    };
+    messages.push(newMsg);
+    renderMessages();
+    msgInput.value = "";
+
+    // Guardar en JSONBin
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": apiKey,
+          "X-Bin-Versioning": "false"
+        },
+        body: JSON.stringify({ messages })
+      });
+    } catch (e) {
+      console.error("Error guardando mensaje", e);
+    }
+  }
+
+  // Recarga periódica para ver nuevos mensajes de otros usuarios
+  function startAutoRefresh() {
+    setInterval(async () => {
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+          headers: {
+            "X-Master-Key": apiKey
+          }
+        });
+        if (!res.ok) throw new Error("Error cargando mensajes");
+        const data = await res.json();
+        const latestMessages = data.record.messages || [];
+        if (JSON.stringify(latestMessages) !== JSON.stringify(messages)) {
+          messages = latestMessages;
+          renderMessages();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 5000);
+  }
+</script>
 </body>
 </html>
